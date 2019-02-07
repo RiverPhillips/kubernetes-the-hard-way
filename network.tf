@@ -37,15 +37,21 @@ resource "azurerm_virtual_network" "kubernetes_vnet" {
   address_space       = ["10.240.0.0/24"]
   location            = "${azurerm_resource_group.rg.location}"
   resource_group_name = "${azurerm_resource_group.rg.name}"
-
-  subnet {
-    name           = "kubernetes-subnet"
-    address_prefix = "10.240.0.0/24"
-    security_group = "${azurerm_network_security_group.kubernetes_nsg.id}"
-  }
 }
 
-resource "azurerm_public_ip" "static_ip" {
+resource "azurerm_subnet" "kubernetes_subnet" {
+  name                 = "kubernetes-subnet"
+  resource_group_name  = "${azurerm_resource_group.rg.name}"
+  address_prefix       = "10.240.0.0/24"
+  virtual_network_name = "${azurerm_virtual_network.kubernetes_vnet.name}"
+}
+
+resource "azurerm_subnet_network_security_group_association" "security_group_association" {
+  subnet_id                 = "${azurerm_subnet.kubernetes_subnet.id}"
+  network_security_group_id = "${azurerm_network_security_group.kubernetes_nsg.id}"
+}
+
+resource "azurerm_public_ip" "kubernetes_static_ip" {
   name                = "lb_ip"
   location            = "${azurerm_resource_group.rg.location}"
   resource_group_name = "${azurerm_resource_group.rg.name}"
@@ -59,6 +65,6 @@ resource "azurerm_lb" "load_balancer" {
 
   frontend_ip_configuration {
     name                 = "kubernetes"
-    public_ip_address_id = "${azurerm_public_ip.static_ip.id}"
+    public_ip_address_id = "${azurerm_public_ip.kubernetes_static_ip.id}"
   }
 }
